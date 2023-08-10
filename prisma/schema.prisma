@@ -1,0 +1,228 @@
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =======================
+// Enums
+// =======================
+
+enum user_role {
+  ADMIN
+  NO_ACCESS
+}
+
+enum language {
+  EN_US
+  ZH
+  ZH_CN
+  ZH_TW
+  DA
+  NL
+  EN
+  EN_AU
+  EN_GB
+  EN_IN
+  EN_NZ
+  FR
+  FR_CA
+  DE
+  HI
+  HI_LATN
+  ID
+  IT
+  JA
+  KO
+  NO
+  PL
+  PT
+  PT_BR
+  PT_PT
+  RU
+  ES
+  ES_419
+  SV
+  TA
+  TR
+  UK
+}
+
+// =======================
+// Tables
+// =======================
+
+model client {
+  id   String @id @default(uuid())
+  name String
+
+  users         client_user[]
+  video_content video_content[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+}
+
+model client_user {
+  id String @id @default(uuid())
+
+  client    client @relation(fields: [client_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  client_id String
+
+  email       String @unique
+  given_name  String
+  family_name String
+
+  auth0_user_id String
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+}
+
+model video_content {
+  id String @id @default(uuid())
+
+  client    client @relation(fields: [client_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  client_id String
+
+  source_video    video  @relation(fields: [source_video_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  source_video_id String
+
+  name String
+
+  transcriptions transcription[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+}
+
+model transcription {
+  id String @id @default(uuid())
+
+  name String?
+
+  video_content    video_content @relation(fields: [video_content_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  video_content_id String
+
+  native   Boolean  @default(false)
+  language language @default(EN)
+
+  source_transcription    transcription? @relation("source_transcription", fields: [source_transcription_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  source_transcription_id String?
+
+  child_transcriptions transcription[] @relation("source_transcription")
+
+  utterances utterance[]
+
+  transcription_video transcription_video[]
+  transcription_audio transcription_audio[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+}
+
+model audio {
+  id         String  @id @default(uuid())
+  bucket_key String?
+
+  utterance_audios     utterance_audio[]
+  transcription_audios transcription_audio[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+}
+
+model video {
+  id              String  @id @default(uuid())
+  bucket_key      String?
+  mux_asset_id    String?
+  mux_playback_id String?
+
+  transcription_videos transcription_video[]
+  video_content        video_content[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+}
+
+model utterance {
+  id String @id @default(uuid())
+
+  transcription    transcription @relation(fields: [transcription_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  transcription_id String
+
+  transcript String
+
+  channel Int @default(0)
+
+  start_time Float
+  end_time   Float
+
+  source_utterance    utterance? @relation("source_utterance", fields: [source_utterance_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  source_utterance_id String?
+
+  derived_utterances utterance[]       @relation("source_utterance")
+  utterance_audios   utterance_audio[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+}
+
+model utterance_audio {
+  id String @id @default(uuid())
+
+  utterance    utterance @relation(fields: [utterance_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  utterance_id String
+
+  audio    audio  @relation(fields: [audio_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  audio_id String
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+}
+
+model transcription_audio {
+  id String @id @default(uuid())
+
+  transcription    transcription @relation(fields: [transcription_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  transcription_id String
+
+  audio    audio  @relation(fields: [audio_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  audio_id String
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+}
+
+model transcription_video {
+  id String @id @default(uuid())
+
+  transcription    transcription @relation(fields: [transcription_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  transcription_id String
+
+  video    video  @relation(fields: [video_id], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  video_id String
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+}
+
+model users {
+  id String @id @default(uuid())
+
+  email       String @unique
+  given_name  String
+  family_name String
+
+  auth0_user_id String
+
+  role user_role @default(NO_ACCESS)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+}
